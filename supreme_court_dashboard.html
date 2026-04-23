@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supreme Court Constitution Benches Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2230;
+    --border: #2a3444;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --cream: #f0e6cc;
+    --muted: #8b95a8;
+    --accent-blue: #4a90d9;
+    --accent-teal: #3abfbf;
+    --accent-red: #d94a5a;
+    --text: #e8edf4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0d1117 0%, #1a2233 50%, #0d1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 36px 48px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '⚖';
+    position: absolute;
+    right: -20px;
+    top: -30px;
+    font-size: 200px;
+    opacity: 0.03;
+    color: var(--gold);
+    pointer-events: none;
+  }
+  .header-badge {
+    display: inline-block;
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold-light);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(22px, 4vw, 40px);
+    font-weight: 900;
+    color: var(--cream);
+    line-height: 1.15;
+    max-width: 700px;
+  }
+  .header h1 span { color: var(--gold); }
+  .header-sub {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--muted);
+    letter-spacing: 0.3px;
+  }
+
+  /* KPI Row */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    padding: 28px 48px 8px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 20px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi:hover { border-color: var(--gold); }
+  .kpi::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--kpi-color, var(--gold));
+    opacity: 0.6;
+  }
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--cream);
+    line-height: 1;
+  }
+  .kpi-sub {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Charts grid */
+  .grid {
+    display: grid;
+    padding: 20px 48px;
+    gap: 20px;
+  }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-main { grid-template-columns: 2fr 1fr; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(201,168,76,0.4); }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cream);
+    margin-bottom: 4px;
+    letter-spacing: 0.3px;
+  }
+  .card-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .chart-wrap {
+    position: relative;
+    height: 220px;
+  }
+  .chart-wrap-tall { height: 300px; }
+
+  /* Divider */
+  .section-label {
+    padding: 8px 48px 0;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(42,52,68,0.5);
+    color: var(--text);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(201,168,76,0.04); }
+  .bar-cell { display: flex; align-items: center; gap: 8px; }
+  .bar-bg {
+    flex: 1; height: 6px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 3px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 3px;
+    background: var(--gold);
+    transition: width 0.8s ease;
+  }
+  .count-badge {
+    min-width: 30px;
+    text-align: right;
+    color: var(--gold-light);
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  /* Pill badges */
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 30px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill-yes { background: rgba(58,191,191,0.15); color: var(--accent-teal); }
+  .pill-no  { background: rgba(217,74,90,0.15);  color: var(--accent-red); }
+
+  /* Donut legend */
+  .legend { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { color: var(--muted); flex: 1; }
+  .legend-val { color: var(--text); font-weight: 600; }
+
+  /* Two-col inside card */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+
+  /* Footer */
+  footer {
+    margin-top: 40px;
+    border-top: 1px solid var(--border);
+    padding: 16px 48px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  @media (max-width: 900px) {
+    .kpi-row, .grid { padding-left: 16px; padding-right: 16px; }
+    .section-label { padding-left: 16px; }
+    .grid-2, .grid-3, .grid-main { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    footer { padding-left: 16px; }
+    .header { padding: 24px 16px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-badge">India · Supreme Court · 2010–2022</div>
+  <h1>Constitution Benches<br>of the <span>Supreme Court</span></h1>
+  <p class="header-sub">91 cases decided by 5, 7 & 9 judge constitutional benches · Data as of 16 Aug 2021</p>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-row">
+  <div class="kpi" style="--kpi-color:#c9a84c">
+    <div class="kpi-label">Total Cases</div>
+    <div class="kpi-value">91</div>
+    <div class="kpi-sub">Constitution bench decisions</div>
+  </div>
+  <div class="kpi" style="--kpi-color:#3abfbf">
+    <div class="kpi-label">Unanimous</div>
+    <div class="kpi-value">77</div>
+    <div class="kpi-sub">84.6% of verdicts</div>
+  </div>
+  <div class="kpi" style="--kpi-color:#4a90d9">
+    <div class="kpi-label">5-Judge Benches</div>
+    <div class="kpi-value">87</div>
+    <div class="kpi-sub">95.6% of all benches</div>
+  </div>
+  <div class="kpi" style="--kpi-color:#9b6fd4">
+    <div class="kpi-label">Avg. SC Citations</div>
+    <div class="kpi-value">10.2</div>
+    <div class="kpi-sub">Times cited by SC</div>
+  </div>
+  <div class="kpi" style="--kpi-color:#d94a5a">
+    <div class="kpi-label">CJI on Bench</div>
+    <div class="kpi-value">68</div>
+    <div class="kpi-sub">74.7% of cases</div>
+  </div>
+  <div class="kpi" style="--kpi-color:#f0a500">
+    <div class="kpi-label">Writ Petitions</div>
+    <div class="kpi-value">25</div>
+    <div class="kpi-sub">27.5% of case origins</div>
+  </div>
+</div>
+
+<!-- Row 1 -->
+<div class="section-label" style="margin-top:20px">Trends over time</div>
+<div class="grid grid-main" style="margin-top:0">
+  <div class="card">
+    <div class="card-title">Cases Decided per Year</div>
+    <div class="card-sub">Number of constitution bench judgements delivered annually</div>
+    <div class="chart-wrap chart-wrap-tall">
+      <canvas id="yearChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Cases by CJI Tenure</div>
+    <div class="card-sub">Distribution during each Chief Justice's tenure</div>
+    <div class="chart-wrap chart-wrap-tall">
+      <canvas id="cjiChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2 -->
+<div class="section-label">Composition & outcomes</div>
+<div class="grid grid-3" style="margin-top:0">
+  <div class="card">
+    <div class="card-title">Case Origin Type</div>
+    <div class="card-sub">How cases reached the Constitution Bench</div>
+    <div class="chart-wrap">
+      <canvas id="originChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Nature of Challenge</div>
+    <div class="card-sub">Legal basis of the constitutional challenge</div>
+    <div class="chart-wrap">
+      <canvas id="challengeChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Bench Composition</div>
+    <div class="card-sub">Verdict type and bench size breakdown</div>
+    <div class="two-col" style="margin-top:10px">
+      <div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Verdict</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3abfbf"></div><span class="legend-label">Unanimous</span><span class="legend-val">77</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#d94a5a"></div><span class="legend-label">Split</span><span class="legend-val">14</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px">Bench Size</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div><span class="legend-label">5 Judges</span><span class="legend-val">87</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#4a90d9"></div><span class="legend-label">7 Judges</span><span class="legend-val">3</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#9b6fd4"></div><span class="legend-label">9 Judges</span><span class="legend-val">1</span></div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Confirmed / Reversed</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3abfbf"></div><span class="legend-label">Confirmed</span><span class="legend-val">19</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#d94a5a"></div><span class="legend-label">Reversed</span><span class="legend-val">13</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px">CJI on Bench</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div><span class="legend-label">Yes</span><span class="legend-val">68</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2a3444"></div><span class="legend-label">No</span><span class="legend-val">23</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 3 -->
+<div class="section-label">Subject matter & petitioners</div>
+<div class="grid grid-2" style="margin-top:0">
+  <div class="card">
+    <div class="card-title">Subject Matter Distribution</div>
+    <div class="card-sub">Top categories of constitutional matters decided</div>
+    <div class="table-wrap" id="subjectTable"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Petitioner Type</div>
+    <div class="card-sub">Who brought cases to the Constitution Bench</div>
+    <div class="table-wrap" id="petitionerTable"></div>
+  </div>
+</div>
+
+<!-- Row 4 -->
+<div class="section-label">Citation impact</div>
+<div class="grid" style="margin-top:0">
+  <div class="card">
+    <div class="card-title">Most Cited Constitution Bench Judgements</div>
+    <div class="card-sub">Total citations by SC and High Courts/Tribunals (as on 16 Aug 2021)</div>
+    <div class="table-wrap" id="citationTable"></div>
+  </div>
+</div>
+
+<footer>
+  Data source: Constitution Benches of the Supreme Court, 2010–2021 · Dashboard generated from uploaded dataset · All data as on 16 August 2021 unless noted.
+</footer>
+
+<script>
+Chart.defaults.color = '#8b95a8';
+Chart.defaults.borderColor = '#2a3444';
+Chart.defaults.font.family = "'Source Sans 3', sans-serif";
+
+const GOLD = '#c9a84c';
+const TEAL = '#3abfbf';
+const BLUE = '#4a90d9';
+const RED  = '#d94a5a';
+const PURP = '#9b6fd4';
+const MUTED = '#8b95a8';
+
+// ── Year Chart ──────────────────────────────────────────────
+new Chart(document.getElementById('yearChart'), {
+  type: 'bar',
+  data: {
+    labels: ['2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022'],
+    datasets: [{
+      label: 'Cases decided',
+      data: [12, 5, 5, 4, 15, 5, 9, 7, 12, 5, 9, 2, 1],
+      backgroundColor: (ctx) => {
+        const v = ctx.raw;
+        const alpha = 0.4 + (v / 15) * 0.6;
+        return `rgba(201,168,76,${alpha})`;
+      },
+      borderColor: GOLD,
+      borderWidth: 1,
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: '#1c2230' }, ticks: { precision: 0 } }
+    }
+  }
+});
+
+// ── CJI Chart ─────────────────────────────────────────────
+new Chart(document.getElementById('cjiChart'), {
+  type: 'bar',
+  data: {
+    labels: ['R.M. Lodha','Dipak Misra','S.H. Kapadia','T.S. Thakur','S.A. Bobde',
+             'K.G. Balakrishnan','H.L. Dattu','Ranjan Gogoi','Altamas Kabir','P Sathasivam'],
+    datasets: [{
+      label: 'Cases',
+      data: [15, 15, 13, 11, 11, 8, 4, 4, 3, 3],
+      backgroundColor: [GOLD,TEAL,BLUE,PURP,RED,
+                        '#f0a500','#5abf88','#4a90d9','#d97a3a','#bf5a8f'].map(c => c + 'bb'),
+      borderColor:     [GOLD,TEAL,BLUE,PURP,RED,
+                        '#f0a500','#5abf88','#4a90d9','#d97a3a','#bf5a8f'],
+      borderWidth: 1, borderRadius: 3
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1c2230' }, ticks: { precision: 0 } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// ── Origin Chart ───────────────────────────────────────────
+new Chart(document.getElementById('originChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Appeal/SLP: Civil','Writ: Civil','Appeal/SLP: Criminal','Writ: Criminal','Other','Other Original Jurisdiction'],
+    datasets: [{
+      data: [48, 19, 7, 6, 4, 5],
+      backgroundColor: [GOLD+'cc', TEAL+'cc', BLUE+'cc', RED+'cc', PURP+'cc', '#f0a500cc'],
+      borderColor: '#0d1117',
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, padding: 8 } }
+    }
+  }
+});
+
+// ── Challenge Chart ────────────────────────────────────────
+new Chart(document.getElementById('challengeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Other','Legislations: Other','Precedents','FR Challenge','Basic Structure','Exec Action: FR','Exec Action: Other'],
+    datasets: [{
+      data: [21, 21, 16, 15, 7, 6, 5],
+      backgroundColor: [GOLD+'cc', TEAL+'cc', BLUE+'cc', RED+'cc', PURP+'cc','#f0a500cc','#5abf88cc'],
+      borderColor: '#0d1117',
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, padding: 8 } }
+    }
+  }
+});
+
+// ── Subject Table ──────────────────────────────────────────
+const subjectData = [
+  ['Constitutional Matters', 20],
+  ['Criminal Matters', 8],
+  ['Human Rights Matters', 5],
+  ['Service Matters', 5],
+  ['Election Matters', 5],
+  ['Indirect Taxes Matters', 5],
+  ['Land Acquisition Matters', 5],
+  ['Matters Relating to Judiciary', 5],
+  ['Contempt of Court Matters', 4],
+  ['Edu. Institution Admissions', 3],
+];
+const maxSub = 20;
+document.getElementById('subjectTable').innerHTML = `
+<table>
+  <thead><tr><th>Subject</th><th>Cases</th></tr></thead>
+  <tbody>
+    ${subjectData.map(([name, n]) => `
+    <tr>
+      <td>${name}</td>
+      <td>
+        <div class="bar-cell">
+          <div class="bar-bg"><div class="bar-fill" style="width:${(n/maxSub*100).toFixed(1)}%"></div></div>
+          <span class="count-badge">${n}</span>
+        </div>
+      </td>
+    </tr>`).join('')}
+  </tbody>
+</table>`;
+
+// ── Petitioner Table ───────────────────────────────────────
+const petData = [
+  ['Individual', 44],
+  ['Private Company', 10],
+  ['Union or Association', 10],
+  ['State Govt.', 9],
+  ['State: Other Authority', 5],
+  ['Non-Governmental Org.', 4],
+  ['Govt. Corporation', 2],
+  ['Union Govt.', 2],
+  ['Others', 2],
+];
+const maxPet = 44;
+document.getElementById('petitionerTable').innerHTML = `
+<table>
+  <thead><tr><th>Petitioner Type</th><th>Cases</th></tr></thead>
+  <tbody>
+    ${petData.map(([name, n]) => `
+    <tr>
+      <td>${name}</td>
+      <td>
+        <div class="bar-cell">
+          <div class="bar-bg"><div class="bar-fill" style="width:${(n/maxPet*100).toFixed(1)}%;background:${TEAL}"></div></div>
+          <span class="count-badge" style="color:${TEAL}">${n}</span>
+        </div>
+      </td>
+    </tr>`).join('')}
+  </tbody>
+</table>`;
+
+// ── Citation Table ─────────────────────────────────────────
+const citations = [
+  ['State of W.B. v. Committee for Protection of Democratic Rights', 52, 94, 146],
+  ['Puri Investments v. Young Friends & Co.', 49, 42, 91],
+  ['Bhim Singh v. Union of India', 35, 58, 93],
+  ['Rajbir Singh Dalal v. Chaudhari Devi Lal University', 31, 62, 93],
+  ['Union of India v. R. Gandhi', 29, 75, 104],
+  ['Balwant Singh (Dead) v. Daulat Singh (Dead)', 28, 40, 68],
+  ['Suresh Kumar Koushal v. Naz Foundation', 27, 51, 78],
+  ['Bhim Singh v. Union of India (2nd)', 25, 37, 62],
+  ['State of Karnataka v. Shri Ranganatha Reddy', 23, 49, 72],
+  ['National Legal Services Authority v. Union of India', 22, 88, 110],
+];
+const maxCit = 146;
+document.getElementById('citationTable').innerHTML = `
+<table>
+  <thead><tr><th>Case</th><th>SC Citations</th><th>HC/Tribunal</th><th>Total</th></tr></thead>
+  <tbody>
+    ${citations.map(([name, sc, hc, total]) => `
+    <tr>
+      <td style="max-width:300px">${name}</td>
+      <td><span style="color:${GOLD};font-weight:600">${sc}</span></td>
+      <td><span style="color:${BLUE}">${hc}</span></td>
+      <td>
+        <div class="bar-cell">
+          <div class="bar-bg"><div class="bar-fill" style="width:${(total/maxCit*100).toFixed(1)}%;background:${PURP}"></div></div>
+          <span class="count-badge" style="color:${PURP}">${total}</span>
+        </div>
+      </td>
+    </tr>`).join('')}
+  </tbody>
+</table>`;
+</script>
+</body>
+</html>
